@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reset password — InspireCreativity</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #ECECEC; background: #0B0B0F;
+    display: flex; align-items: center; justify-content: center; padding: 28px;
+  }
+  .card {
+    max-width: 440px; width: 100%;
+    background: linear-gradient(180deg, #15151C, #0E0E13);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px; padding: 36px 32px;
+  }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;
+    color: #1A0E00; padding: 4px 10px; border-radius: 99px;
+    background: linear-gradient(135deg, #FFD479, #E8A33D); margin-bottom: 18px;
+  }
+  h1 { font-size: 24px; font-weight: 800; margin: 0 0 8px; }
+  p { color: rgba(255,255,255,0.65); margin: 0 0 20px; font-size: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 6px; color: rgba(255,255,255,0.8); }
+  input[type=password] {
+    width: 100%; padding: 13px 14px; margin-bottom: 16px;
+    background: rgba(255,255,255,0.05); color: #fff;
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; font-size: 15px;
+  }
+  input:focus { outline: none; border-color: #E8A33D; }
+  button {
+    width: 100%; padding: 14px; border: none; border-radius: 14px;
+    background: #E8A33D; color: #1A0E00; font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .msg { font-size: 14px; margin-top: 16px; }
+  .ok { color: #4ADE80; }
+  .err { color: #FB7185; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">★ INSPIRECREATIVITY</span>
+    <h1>Reset your password</h1>
+
+    <div id="form-wrap">
+      <p>Choose a new password for your account.</p>
+      <form id="form">
+        <label for="pw">New password</label>
+        <input type="password" id="pw" autocomplete="new-password" placeholder="At least 6 characters" required>
+        <label for="pw2">Confirm password</label>
+        <input type="password" id="pw2" autocomplete="new-password" placeholder="Re-enter password" required>
+        <button type="submit" id="submit">Update password</button>
+      </form>
+    </div>
+
+    <p id="invalid" class="msg err hidden">This reset link is invalid or has expired. Please request a new one from the app.</p>
+    <p id="result" class="msg hidden"></p>
+  </div>
+
+<script>
+  var SUPABASE_URL = "https://kuqkeuasncqnbvnipetu.supabase.co";
+  var ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1cWtldWFzbmNxbmJ2bmlwZXR1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MzkzOTQsImV4cCI6MjA5NTExNTM5NH0.GiHkjqnEbXps1pUtIS4o3H3AMYPiOrUSAukS7fEHkpc";
+
+  // Recovery tokens arrive in the URL fragment:
+  // #access_token=...&refresh_token=...&type=recovery
+  function parseHash() {
+    var h = (window.location.hash || "").replace(/^#/, "");
+    var out = {};
+    h.split("&").forEach(function (kv) {
+      var p = kv.split("=");
+      if (p[0]) out[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || "");
+    });
+    return out;
+  }
+
+  var params = parseHash();
+  var accessToken = params.access_token;
+  var formWrap = document.getElementById("form-wrap");
+  var invalid = document.getElementById("invalid");
+  var result = document.getElementById("result");
+
+  if (params.error_description) {
+    formWrap.classList.add("hidden");
+    invalid.textContent = decodeURIComponent(params.error_description.replace(/\+/g, " "));
+    invalid.classList.remove("hidden");
+  } else if (!accessToken || params.type !== "recovery") {
+    formWrap.classList.add("hidden");
+    invalid.classList.remove("hidden");
+  }
+
+  document.getElementById("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    result.classList.add("hidden");
+    var pw = document.getElementById("pw").value;
+    var pw2 = document.getElementById("pw2").value;
+    var btn = document.getElementById("submit");
+
+    if (pw.length < 6) { return show(false, "Password must be at least 6 characters."); }
+    if (pw !== pw2) { return show(false, "Passwords don't match."); }
+
+    btn.disabled = true; btn.textContent = "Updating…";
+
+    fetch(SUPABASE_URL + "/auth/v1/user", {
+      method: "PUT",
+      headers: {
+        "apikey": ANON_KEY,
+        "Authorization": "Bearer " + accessToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ password: pw })
+    }).then(function (r) {
+      if (r.ok) {
+        formWrap.classList.add("hidden");
+        show(true, "Password updated. Open InspireCreativity and sign in with your new password.");
+      } else {
+        return r.json().then(function (j) {
+          show(false, (j && (j.msg || j.error_description || j.error)) || "Couldn't update password. The link may have expired — request a new one from the app.");
+          btn.disabled = false; btn.textContent = "Update password";
+        });
+      }
+    }).catch(function () {
+      show(false, "Network error. Please try again.");
+      btn.disabled = false; btn.textContent = "Update password";
+    });
+  });
+
+  function show(ok, text) {
+    result.textContent = text;
+    result.className = "msg " + (ok ? "ok" : "err");
+    result.classList.remove("hidden");
+  }
+</script>
+</body>
+</html>
