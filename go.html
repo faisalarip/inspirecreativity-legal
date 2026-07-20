@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<!-- Smart hand-off for marketing links (Medium, X, YouTube…).
+     Usage: https://faisalarip.github.io/inspirecreativity-legal/go.html?src=medium&c=post-slug
+     Installed users deep-link into the app (measured GA4 attribution);
+     everyone else lands on the App Store after ~1.2s.
+     TODO: once you have the ASC provider token, switch storeURL to
+     "https://apps.apple.com/app/apple-store/id6778075297?pt=YOUR_PT&ct=" + campaign + "&mt=8"
+     so per-post downloads/sales appear in ASC → Sources → Campaigns. -->
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Inspire Creativity</title>
+<style>
+  body{background:#0a0a0c;color:#fff;font-family:-apple-system,system-ui,sans-serif;
+       display:flex;flex-direction:column;align-items:center;justify-content:center;
+       height:100vh;margin:0;gap:12px}
+  p{opacity:.6;font-size:14px;margin:0}
+  a{color:#FF6B4A;font-size:14px}
+</style>
+</head><body>
+<p>Opening Inspire Creativity…</p>
+<a id="store" href="https://apps.apple.com/app/id6778075297">Get it on the App Store</a>
+<script>
+  var q = new URLSearchParams(location.search);
+  var src = (q.get("src") || "web").replace(/[^a-z0-9_-]/gi, "");
+  var c = (q.get("c") || "none").replace(/[^a-z0-9_-]/gi, "");
+  var campaign = src + "_" + c;
+  var appURL = "inspirecreativity://open?utm_source=" + src +
+               "&utm_medium=referral&utm_campaign=" + c;
+  var storeURL = "https://apps.apple.com/app/id6778075297";
+  document.getElementById("store").href = storeURL;
+  var t = setTimeout(function () { location.href = storeURL; }, 1200);
+  window.addEventListener("pagehide", function () { clearTimeout(t); });
+  location.href = appURL;
+</script></body></html>
